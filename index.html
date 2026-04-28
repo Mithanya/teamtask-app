@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>TeamTask | Collaborative Task Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3a5f 0%, #0f2b3d 100%);
+            --app-bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --header-bg: #1e3a5f;
+            --header-text: #ffffff;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+        
+        body.dark {
+            --bg-gradient: #0a0f1a;
+            --app-bg: #0f1420;
+            --card-bg: #1a1f2e;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border-color: #2d3748;
+            --header-bg: #0d1117;
+            --header-text: #e2e8f0;
+        }
+        
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-gradient); min-height: 100vh; transition: all 0.3s ease; }
+        
+        /* Auth */
+        .auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .auth-card { background: var(--card-bg); border-radius: 28px; padding: 28px 20px; max-width: 420px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .auth-card h2 { font-size: 28px; margin-bottom: 8px; color: var(--text-primary); text-align: center; }
+        .demo-box { background: var(--app-bg); padding: 12px; border-radius: 16px; margin: 16px 0; text-align: center; font-size: 13px; }
+        .demo-box span { color: var(--info); font-weight: bold; }
+        .auth-input { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 14px; font-size: 16px; margin-bottom: 12px; background: var(--card-bg); color: var(--text-primary); }
+        .auth-input:focus { outline: none; border-color: var(--info); }
+        .auth-btn { width: 100%; padding: 14px; background: #1e3a5f; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .auth-btn:hover { opacity: 0.9; }
+        .auth-switch { text-align: center; margin-top: 20px; color: var(--text-secondary); }
+        .auth-switch span { color: var(--info); cursor: pointer; font-weight: 600; }
+        
+        /* Main App */
+        .app-container { min-height: 100vh; background: var(--app-bg); display: none; width: 100%; overflow-x: hidden; }
+        .top-bar { background: var(--header-bg); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .top-bar h1 { font-size: 20px; color: var(--header-text); }
+        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 10px; width: 44px; height: 44px; border-radius: 22px; color: var(--header-text); }
+        .user-bar { background: var(--card-bg); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
+        .user-info { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        .role-badge { background: var(--info); color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+        .logout-btn { background: none; border: none; color: var(--danger); font-size: 13px; font-weight: 500; padding: 8px 12px; cursor: pointer; }
+        
+        /* Notification Banner */
+        .notification-banner { background: var(--warning); color: #fff; padding: 12px 16px; margin: 12px; border-radius: 16px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .notification-banner.show { display: flex; }
+        .close-notification { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+        
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px; }
+        .stat-card { background: var(--card-bg); padding: 14px; border-radius: 16px; text-align: center; }
+        .stat-value { font-size: 26px; font-weight: 700; color: var(--info); }
+        .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        
+        /* Search */
+        .search-container { padding: 0 12px 12px 12px; position: relative; }
+        .search-icon { position: absolute; left: 24px; top: 13px; color: var(--text-secondary); }
+        .search-input { width: 100%; padding: 12px 16px 12px 40px; border: 1px solid var(--border-color); border-radius: 30px; font-size: 15px; background: var(--card-bg); color: var(--text-primary); }
+        
+        /* Add Task */
+        .add-task-card { background: var(--card-bg); margin: 0 12px 16px 12px; padding: 16px; border-radius: 20px; }
+        .form-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+        .form-group { display: flex; flex-direction: column; width: 100%; }
+        .form-group label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; }
+        .add-task-card input, .add-task-card select, .add-task-card textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 15px; background: var(--app-bg); color: var(--text-primary); }
+        .add-task-btn { width: 100%; padding: 14px; background: #1e3a5f; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        
+        /* Team Section */
+        .team-section { padding: 0 12px 12px 12px; }
+        .team-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+        .team-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .team-member { background: var(--card-bg); padding: 6px 12px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border-color); }
+        .member-online { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; }
+        .member-offline { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); display: inline-block; }
+        
+        /* Filters */
+        .filter-section { padding: 0 12px 12px 12px; }
+        .filter-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+        .filter-row { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+        .chip { display: inline-block; padding: 8px 16px; background: var(--card-bg); border-radius: 30px; font-size: 13px; cursor: pointer; border: 1px solid var(--border-color); flex-shrink: 0; }
+        .chip.active { background: #1e3a5f; color: white; border: none; }
+        
+        /* Tasks */
+        .drag-hint { text-align: center; font-size: 11px; color: var(--text-secondary); padding: 8px; margin: 0 12px; background: var(--card-bg); border-radius: 20px; margin-bottom: 12px; }
+        .tasks-container { padding: 0 12px 80px 12px; display: flex; flex-direction: column; gap: 12px; }
+        .task-card { background: var(--card-bg); border-radius: 18px; padding: 14px; border-left: 4px solid; cursor: grab; transition: all 0.2s; }
+        .task-card:active { cursor: grabbing; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .task-id { font-size: 10px; color: var(--text-secondary); font-family: monospace; }
+        .assignee-badge { background: var(--app-bg); padding: 4px 8px; border-radius: 20px; font-size: 10px; display: flex; align-items: center; gap: 4px; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-completed { background: #dcfce7; color: #059669; }
+        .task-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+        .task-check { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; }
+        .task-title { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-primary); word-break: break-word; }
+        .task-title.completed { text-decoration: line-through; color: var(--text-secondary); }
+        .task-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+        .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-secondary); background: var(--app-bg); padding: 4px 8px; border-radius: 20px; }
+        .priority-high { background: #fee2e2; color: #dc2626; }
+        .priority-medium { background: #fef3c7; color: #d97706; }
+        .priority-low { background: #dcfce7; color: #059669; }
+        .due-overdue { color: var(--danger); font-weight: bold; }
+        .task-buttons { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+        .task-btn { background: none; border: none; font-size: 13px; padding: 8px 16px; border-radius: 25px; cursor: pointer; flex: 1; text-align: center; color: var(--text-secondary); }
+        
+        /* Analytics */
+        .analytics-container { display: none; padding: 12px; }
+        .chart-card { background: var(--card-bg); border-radius: 20px; padding: 16px; margin-bottom: 16px; }
+        .chart-card h3 { font-size: 15px; margin-bottom: 16px; color: var(--text-primary); }
+        canvas { max-height: 200px; width: 100%; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--card-bg); border-radius: 28px; padding: 24px; max-width: 320px; width: 90%; text-align: center; }
+        .modal-input { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 14px; margin: 16px 0; background: var(--app-bg); color: var(--text-primary); font-size: 15px; }
+        .modal-buttons { display: flex; gap: 12px; }
+        .modal-btn { flex: 1; padding: 12px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
+        .modal-btn.cancel { background: var(--border-color); color: var(--text-primary); }
+        .modal-btn.confirm { background: var(--info); color: white; }
+        .modal-btn.danger { background: var(--danger); color: white; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #1e293b; color: white; padding: 12px; border-radius: 30px; text-align: center; z-index: 1100; font-size: 13px; }
+        
+        /* Drawer */
+        .drawer-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; }
+        .drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background: var(--card-bg); z-index: 201; padding: 20px; transition: left 0.3s ease; }
+        .drawer.open { left: 0; }
+        .drawer-header { font-size: 22px; font-weight: 700; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; color: var(--text-primary); }
+        .drawer-item { padding: 14px 16px; border-radius: 14px; cursor: pointer; margin-bottom: 4px; color: var(--text-secondary); font-size: 16px; }
+        .drawer-item.active { background: #e2e8f0; color: #1e3a5f; }
+        .drawer-item.logout { color: var(--danger); margin-top: 20px; }
+        
+        @media (min-width: 600px) {
+            .form-row { flex-direction: row; }
+            .form-row .form-group { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="authContainer" class="auth-container">
+    <div class="auth-card">
+        <h2>TeamTask</h2>
+        <p style="color:var(--text-secondary);text-align:center;margin-bottom:8px;">Collaborative Task Management</p>
+        <div class="demo-box">
+            <strong>Demo Accounts:</strong><br>
+            <span>admin@team.com</span> / admin123 (Manager)<br>
+            <span>john@team.com</span> / john123 (Member)
+        </div>
+        <div id="loginForm">
+            <input type="email" id="loginEmail" class="auth-input" placeholder="Email">
+            <input type="password" id="loginPassword" class="auth-input" placeholder="Password">
+            <button class="auth-btn" id="loginBtn">Sign In</button>
+            <div class="auth-switch">New user? <span id="showSignupBtn">Create Account</span></div>
+        </div>
+        <div id="signupForm" style="display:none">
+            <input type="text" id="signupName" class="auth-input" placeholder="Full Name">
+            <input type="email" id="signupEmail" class="auth-input" placeholder="Email">
+            <input type="password" id="signupPassword" class="auth-input" placeholder="Password (min 4)">
+            <select id="signupRole" class="auth-input">
+                <option value="Member">Team Member</option>
+                <option value="Manager">Manager</option>
+            </select>
+            <button class="auth-btn" id="signupBtn">Create Account</button>
+            <div class="auth-switch">Have account? <span id="showLoginBtn">Sign In</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Main App -->
+<div id="appContainer" class="app-container">
+    <div class="top-bar">
+        <button class="icon-btn" id="menuBtn">☰</button>
+        <h1>TeamTask</h1>
+        <button class="icon-btn" id="themeToggle">🌙</button>
+    </div>
+    <div class="user-bar">
+        <div><span class="user-info" id="userDisplay"></span> <span class="role-badge" id="userRole"></span></div>
+        <button class="logout-btn" id="logoutBtn">Sign Out</button>
+    </div>
+    
+    <div id="notificationBanner" class="notification-banner">
+        <span id="notificationMsg"><i class="fas fa-bell"></i> You have pending reminders!</span>
+        <button class="close-notification" id="closeNotification">✕</button>
+    </div>
+    
+    <div id="dashboardView">
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="totalTasks">0</div><div class="stat-label">Total Tasks</div></div>
+            <div class="stat-card"><div class="stat-value" id="completedTasks">0</div><div class="stat-label">Completed</div></div>
+            <div class="stat-card"><div class="stat-value" id="pendingTasks">0</div><div class="stat-label">Pending</div></div>
+            <div class="stat-card"><div class="stat-value" id="productivityRate">0%</div><div class="stat-label">Productivity</div></div>
+        </div>
+        
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search tasks...">
+        </div>
+        
+        <div class="add-task-card">
+            <div class="form-row">
+                <div class="form-group"><label>Task Title</label><input type="text" id="taskTitle" placeholder="Enter task title"></div>
+                <div class="form-group"><label>Assign To</label>
+                    <select id="taskAssignee">
+                        <option value="Me">Myself</option>
+                        <option value="John">John</option>
+                        <option value="Sarah">Sarah</option>
+                        <option value="Mike">Mike</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Priority</label><select id="taskPriority"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+                <div class="form-group"><label>Due Date</label><input type="date" id="taskDueDate"></div>
+                <div class="form-group"><label>Department</label><select id="taskDept"><option value="IT">IT</option><option value="HR">HR</option><option value="Finance">Finance</option><option value="Marketing">Marketing</option></select></div>
+            </div>
+            <div class="form-group"><label>Description</label><textarea id="taskDesc" rows="2" placeholder="Add description..."></textarea></div>
+            <button class="add-task-btn" id="addTaskBtn"><i class="fas fa-plus-circle"></i> Create Task</button>
+        </div>
+        
+        <div class="team-section">
+            <div class="team-title"><i class="fas fa-users"></i> Team Members</div>
+            <div class="team-list" id="teamList">
+                <div class="team-member"><span class="member-online"></span> You (Manager)</div>
+                <div class="team-member"><span class="member-online"></span> John Smith</div>
+                <div class="team-member"><span class="member-online"></span> Sarah Lee</div>
+                <div class="team-member"><span class="member-offline"></span> Mike Chen</div>
+            </div>
+        </div>
+        
+        <div class="drag-hint"><i class="fas fa-arrows-alt"></i> Drag and drop tasks to reorder</div>
+        
+        <div class="filter-section">
+            <div class="filter-label">Filter by Assignee</div>
+            <div class="filter-row" id="assigneeFilters">
+                <span class="chip active" data-assignee="all">All</span>
+                <span class="chip" data-assignee="Me">Me</span>
+                <span class="chip" data-assignee="John">John</span>
+                <span class="chip" data-assignee="Sarah">Sarah</span>
+                <span class="chip" data-assignee="Mike">Mike</span>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <div class="filter-label">Filter by Status</div>
+            <div class="filter-row" id="statusFilters">
+                <span class="chip active" data-stat="all">All</span>
+                <span class="chip" data-stat="active">Active</span>
+                <span class="chip" data-stat="completed">Completed</span>
+            </div>
+        </div>
+        
+        <div id="tasksList" class="tasks-container"></div>
+    </div>
+    
+    <div id="analyticsView" class="analytics-container">
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="highPriorityPending">0</div><div class="stat-label">High Priority</div></div>
+            <div class="stat-card"><div class="stat-value" id="weeklyCompleted">0</div><div class="stat-label">This Week</div></div>
+            <div class="stat-card"><div class="stat-value" id="overdueTasks">0</div><div class="stat-label">Overdue</div></div>
+            <div class="stat-card"><div class="stat-value" id="teamProductivity">0%</div><div class="stat-label">Team Productivity</div></div>
+        </div>
+        <div class="chart-card"><h3>Tasks by Department</h3><canvas id="deptChart"></canvas></div>
+        <div class="chart-card"><h3>Weekly Progress</h3><canvas id="weeklyChart"></canvas></div>
+        <div class="chart-card"><h3>Tasks by Assignee</h3><canvas id="assigneeChart"></canvas></div>
+    </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-header">TeamTask</div>
+    <div class="drawer-item active" data-view="dashboard">Dashboard</div>
+    <div class="drawer-item" data-view="analytics">Analytics</div>
+    <div class="drawer-item logout" id="drawerLogout">Logout</div>
+</div>
+
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <i class="fas fa-trash-alt" style="color:#ef4444;font-size:40px"></i>
+        <h3>Delete Task?</h3>
+        <p>This cannot be undone.</p>
+        <div class="modal-buttons">
+            <button class="modal-btn cancel" id="cancelDeleteBtn">Cancel</button>
+            <button class="modal-btn danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <i class="fas fa-edit" style="color:#3b82f6;font-size:40px"></i>
+        <h3>Edit Task</h3>
+        <input type="text" id="editInput" class="modal-input" placeholder="Task title">
+        <div class="modal-buttons">
+            <button class="modal-btn cancel" id="cancelEditBtn">Cancel</button>
+            <button class="modal-btn confirm" id="saveEditBtn">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============ INITIALIZE DATABASE WITH DEMO USERS ============
+let users = localStorage.getItem('team_users');
+if (!users) {
+    let defaultUsers = {
+        'admin@team.com': { name: 'Admin User', password: 'admin123', role: 'Manager' },
+        'john@team.com': { name: 'John Smith', password: 'john123', role: 'Member' },
+        'sarah@team.com': { name: 'Sarah Lee', password: 'sarah123', role: 'Member' }
+    };
+    localStorage.setItem('team_users', JSON.stringify(defaultUsers));
+}
+
+// ============ GLOBAL VARIABLES ============
+let currentUser = null;
+let tasks = [];
+let currentAssignee = 'all';
+let currentStat = 'all';
+let searchQuery = '';
+let pendingDeleteId = null;
+let pendingEditId = null;
+let deptChart = null;
+let weeklyChart = null;
+let assigneeChart = null;
+let sortable = null;
+
+// ============ HELPER FUNCTIONS ============
+function showToast(msg, isError) {
+    let toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.background = isError ? '#ef4444' : '#10b981';
+    toast.innerHTML = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// ============ DARK MODE ============
+let savedTheme = localStorage.getItem('team_theme');
+if (savedTheme === 'dark') {
+    document.body.classList.add('dark');
+    document.getElementById('themeToggle').innerHTML = '☀️';
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark');
+    let isDark = document.body.classList.contains('dark');
+    document.getElementById('themeToggle').innerHTML = isDark ? '☀️' : '🌙';
+    localStorage.setItem('team_theme', isDark ? 'dark' : 'light');
+}
+
+// ============ NOTIFICATION & REMINDERS ============
+function checkReminders() {
+    let today = new Date().toISOString().split('T')[0];
+    let overdueTasks = tasks.filter(t => !t.completed && t.dueDate < today);
+    let dueTodayTasks = tasks.filter(t => !t.completed && t.dueDate === today);
+    
+    let banner = document.getElementById('notificationBanner');
+    let msgDiv = document.getElementById('notificationMsg');
+    
+    if (overdueTasks.length > 0) {
+        msgDiv.innerHTML = '<i class="fas fa-bell"></i> ⚠️ You have ' + overdueTasks.length + ' overdue task(s)!';
+        banner.classList.add('show');
+    } else if (dueTodayTasks.length > 0) {
+        msgDiv.innerHTML = '<i class="fas fa-bell"></i> 📅 ' + dueTodayTasks.length + ' task(s) due today!';
+        banner.classList.add('show');
+    } else {
+        banner.classList.remove('show');
+    }
+}
+
+document.getElementById('closeNotification').onclick = function() {
+    document.getElementById('notificationBanner').classList.remove('show');
+};
+
+// ============ AUTHENTICATION FUNCTIONS ============
+function handleLogin() {
+    let email = document.getElementById('loginEmail').value.trim();
+    let password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        showToast('Please enter email and password', true);
+        return;
+    }
+    
+    let users = JSON.parse(localStorage.getItem('team_users'));
+    let user = users[email];
+    
+    if (user && user.password === password) {
+        currentUser = { email: email, name: user.name, role: user.role };
+        localStorage.setItem('team_current', JSON.stringify(currentUser));
+        showToast('Welcome ' + user.name);
+        showApp();
+    } else {
+        showToast('Invalid email or password', true);
+    }
+}
+
+function handleSignup() {
+    let name = document.getElementById('signupName').value.trim();
+    let email = document.getElementById('signupEmail').value.trim();
+    let password = document.getElementById('signupPassword').value;
+    let role = document.getElementById('signupRole').value;
+    
+    if (!name || !email || !password) {
+        showToast('Please fill all fields', true);
+        return;
+    }
+    if (password.length < 4) {
+        showToast('Password must be at least 4 characters', true);
+        return;
+    }
+    
+    let users = JSON.parse(localStorage.getItem('team_users'));
+    if (users[email]) {
+        showToast('Email already exists', true);
+        return;
+    }
+    
+    users[email] = { name: name, password: password, role: role };
+    localStorage.setItem('team_users', JSON.stringify(users));
+    showToast('Account created! Please login.');
+    
+    document.getElementById('loginEmail').value = email;
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('signupForm').style.display = 'none';
+}
+
+function handleLogout() {
+    currentUser = null;
+    localStorage.removeItem('team_current');
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('authContainer').style.display = 'flex';
+    showToast('Logged out successfully');
+}
+
+function checkSession() {
+    let saved = localStorage.getItem('team_current');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        return true;
+    }
+    return false;
+}
+
+// ============ TASK FUNCTIONS ============
+function loadTasks() {
+    let stored = localStorage.getItem('team_tasks_' + currentUser.email);
+    if (stored) {
+        tasks = JSON.parse(stored);
+    } else {
+        let today = new Date().toISOString().split('T')[0];
+        let tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        tasks = [
+            { id: 1, title: "Complete Q4 Financial Report", completed: false, priority: "high", assignee: "John", dept: "Finance", desc: "Prepare quarterly financial summary", dueDate: tomorrow, createdBy: "Admin" },
+            { id: 2, title: "Frontend Architecture Review", completed: false, priority: "high", assignee: "Sarah", dept: "IT", desc: "Review new component structure", dueDate: tomorrow, createdBy: "Admin" },
+            { id: 3, title: "Client Presentation", completed: true, priority: "medium", assignee: "Me", dept: "Marketing", desc: "Present new product roadmap", dueDate: today, createdBy: "Admin" },
+            { id: 4, title: "Employee Onboarding Session", completed: false, priority: "low", assignee: "Mike", dept: "HR", desc: "New hire orientation", dueDate: tomorrow, createdBy: "Admin" }
+        ];
+        saveTasks();
+    }
+    renderAll();
+    initDragDrop();
+}
+
+function saveTasks() {
+    localStorage.setItem('team_tasks_' + currentUser.email, JSON.stringify(tasks));
+}
+
+function addTask() {
+    let title = document.getElementById('taskTitle').value;
+    let assignee = document.getElementById('taskAssignee').value;
+    let priority = document.getElementById('taskPriority').value;
+    let dueDate = document.getElementById('taskDueDate').value;
+    let dept = document.getElementById('taskDept').value;
+    let desc = document.getElementById('taskDesc').value;
+    
+    if (!title.trim()) {
+        showToast('Please enter a task title', true);
+        return;
+    }
+    
+    let newTask = {
+        id: Date.now(),
+        title: title.trim(),
+        completed: false,
+        priority: priority,
+        assignee: assignee === 'Me' ? currentUser.name.split(' ')[0] : assignee,
+        dept: dept,
+        desc: desc || '',
+        dueDate: dueDate || new Date().toISOString().split('T')[0],
+        createdBy: currentUser.name.split(' ')[0]
+    };
+    
+    tasks.unshift(newTask);
+    saveTasks();
+    renderAll();
+    showToast('Task created successfully!');
+    
+    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskDesc').value = '';
+    initDragDrop();
+}
+
+function toggleTask(id) {
+    let task = tasks.find(t => t.id === id);
+    if (task) {
+        task.completed = !task.completed;
+        saveTasks();
+        renderAll();
+        checkReminders();
+    }
+}
+
+function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    renderAll();
+    showToast('Task deleted');
+}
+
+function updateTask(id, newTitle) {
+    let task = tasks.find(t => t.id === id);
+    if (task && newTitle && newTitle.trim()) {
+        task.title = newTitle.trim();
+        saveTasks();
+        renderAll();
+        showToast('Task updated');
+    }
+}
+
+function getFilteredTasks() {
+    let filtered = [];
+    for (let i = 0; i < tasks.length; i++) filtered.push(tasks[i]);
+    
+    if (currentStat === 'active') {
+        let active = [];
+        for (let i = 0; i < filtered.length; i++) if (!filtered[i].completed) active.push(filtered[i]);
+        filtered = active;
+    }
+    if (currentStat === 'completed') {
+        let completed = [];
+        for (let i = 0; i < filtered.length; i++) if (filtered[i].completed) completed.push(filtered[i]);
+        filtered = completed;
+    }
+    if (currentAssignee !== 'all') {
+        let assigned = [];
+        for (let i = 0; i < filtered.length; i++) if (filtered[i].assignee === currentAssignee) assigned.push(filtered[i]);
+        filtered = assigned;
+    }
+    if (searchQuery) {
+        let searched = [];
+        for (let i = 0; i < filtered.length; i++) {
+            if (filtered[i].title.toLowerCase().includes(searchQuery.toLowerCase())) searched.push(filtered[i]);
+        }
+        filtered = searched;
+    }
+    return filtered;
+}
+
+// ============ DRAG & DROP ============
+function initDragDrop() {
+    let container = document.getElementById('tasksList');
+    if (sortable) sortable.destroy();
+    sortable = new Sortable(container, {
+        animation: 300,
+        ghostClass: 'drag-over',
+        onEnd: function() {
+            let newOrder = [];
+            let items = document.querySelectorAll('.task-card');
+            for (let i = 0; i < items.length; i++) {
+                let id = parseInt(items[i].getAttribute('data-id'));
+                if (id) newOrder.push(id);
+            }
+            let reorderedTasks = [];
+            for (let i = 0; i < newOrder.length; i++) {
+                for (let j = 0; j < tasks.length; j++) {
+                    if (tasks[j].id === newOrder[i]) reorderedTasks.push(tasks[j]);
+                }
+            }
+            tasks = reorderedTasks;
+            saveTasks();
+        }
+    });
+}
+
+// ============ UI RENDERING ============
+function renderTasks() {
+    let container = document.getElementById('tasksList');
+    let filtered = getFilteredTasks();
+    let today = new Date().toISOString().split('T')[0];
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-tasks"></i><p>No tasks found</p></div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    let deptColors = { IT: '#06b6d4', HR: '#10b981', Finance: '#3b82f6', Marketing: '#f59e0b' };
+    
+    for (let i = 0; i < filtered.length; i++) {
+        let task = filtered[i];
+        let isOverdue = (!task.completed && task.dueDate < today);
+        let dueText = isOverdue ? 'Overdue' : (task.dueDate === today ? 'Today' : task.dueDate);
+        
+        let card = document.createElement('div');
+        card.className = 'task-card';
+        card.setAttribute('data-id', task.id);
+        card.style.borderLeftColor = deptColors[task.dept] || '#3b82f6';
+        card.innerHTML = 
+            '<div class="task-header">' +
+                '<span class="task-id">#' + task.id + '</span>' +
+                '<span class="assignee-badge"><i class="fas fa-user"></i> ' + task.assignee + '</span>' +
+                '<span class="status-badge ' + (task.completed ? 'status-completed' : 'status-pending') + '">' + (task.completed ? 'Completed' : 'Pending') + '</span>' +
+            '</div>' +
+            '<div class="task-row">' +
+                '<input type="checkbox" class="task-check" data-id="' + task.id + '"' + (task.completed ? ' checked' : '') + '>' +
+                '<div class="task-title ' + (task.completed ? 'completed' : '') + '">' + escapeHtml(task.title) + '</div>' +
+            '</div>' +
+            (task.desc ? '<div style="font-size:12px;color:var(--text-secondary);margin:8px 0 8px 32px;"><i class="fas fa-align-left"></i> ' + escapeHtml(task.desc) + '</div>' : '') +
+            '<div class="task-meta">' +
+                '<span class="meta-tag"><i class="fas fa-building"></i> ' + task.dept + '</span>' +
+                '<span class="meta-tag priority-' + task.priority + '">' + task.priority + '</span>' +
+                '<span class="meta-tag ' + (isOverdue ? 'due-overdue' : '') + '"><i class="fas fa-calendar"></i> ' + dueText + (isOverdue ? ' ⚠️' : '') + '</span>' +
+                '<span class="meta-tag"><i class="fas fa-user-plus"></i> By: ' + (task.createdBy || 'Admin') + '</span>' +
+            '</div>' +
+            '<div class="task-buttons">' +
+                '<button class="task-btn edit" data-id="' + task.id + '"><i class="fas fa-edit"></i> Edit</button>' +
+                '<button class="task-btn delete" data-id="' + task.id + '"><i class="fas fa-trash-alt"></i> Delete</button>' +
+            '</div>';
+        container.appendChild(card);
+    }
+    
+    // Attach events
+    let checkboxes = document.querySelectorAll('.task-check');
+    for (let i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].onclick = function(e) { e.stopPropagation(); toggleTask(parseInt(this.dataset.id)); };
+    }
+    let deleteBtns = document.querySelectorAll('.task-btn.delete');
+    for (let i = 0; i < deleteBtns.length; i++) {
+        deleteBtns[i].onclick = function() { pendingDeleteId = parseInt(this.dataset.id); document.getElementById('confirmModal').classList.add('active'); };
+    }
+    let editBtns = document.querySelectorAll('.task-btn.edit');
+    for (let i = 0; i < editBtns.length; i++) {
+        editBtns[i].onclick = function() {
+            pendingEditId = parseInt(this.dataset.id);
+            let task = null;
+            for (let j = 0; j < tasks.length; j++) if (tasks[j].id === pendingEditId) task = tasks[j];
+            document.getElementById('editInput').value = task ? task.title : '';
+            document.getElementById('editModal').classList.add('active');
+        };
+    }
+}
+
+function updateStats() {
+    let total = tasks.length;
+    let completed = 0;
+    for (let i = 0; i < tasks.length; i++) if (tasks[i].completed) completed++;
+    let pending = total - completed;
+    let prod = total === 0 ? 0 : Math.round((completed / total) * 100);
+    
+    document.getElementById('totalTasks').innerText = total;
+    document.getElementById('completedTasks').innerText = completed;
+    document.getElementById('pendingTasks').innerText = pending;
+    document.getElementById('productivityRate').innerText = prod + '%';
+    
+    let highPriority = 0;
+    for (let i = 0; i < tasks.length; i++) if (!tasks[i].completed && tasks[i].priority === 'high') highPriority++;
+    
+    let weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    let weeklyCompleted = 0;
+    for (let i = 0; i < tasks.length; i++) if (tasks[i].completed && tasks[i].dueDate >= weekAgo) weeklyCompleted++;
+    
+    let today = new Date().toISOString().split('T')[0];
+    let overdue = 0;
+    for (let i = 0; i < tasks.length; i++) if (!tasks[i].completed && tasks[i].dueDate < today) overdue++;
+    
+    document.getElementById('highPriorityPending').innerText = highPriority;
+    document.getElementById('weeklyCompleted').innerText = weeklyCompleted;
+    document.getElementById('overdueTasks').innerText = overdue;
+    document.getElementById('teamProductivity').innerText = prod + '%';
+}
+
+function updateCharts() {
+    let depts = { IT: 0, HR: 0, Finance: 0, Marketing: 0 };
+    for (let i = 0; i < tasks.length; i++) {
+        if (depts[tasks[i].dept] !== undefined) depts[tasks[i].dept]++;
+    }
+    if (deptChart) deptChart.destroy();
+    deptChart = new Chart(document.getElementById('deptChart'), {
+        type: 'doughnut',
+        data: { labels: ['IT', 'HR', 'Finance', 'Marketing'], datasets: [{ data: [depts.IT, depts.HR, depts.Finance, depts.Marketing], backgroundColor: ['#06b6d4', '#10b981', '#3b82f6', '#f59e0b'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+    });
+    
+    let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    let completedByDay = [];
+    for (let i = 0; i < days.length; i++) {
+        let d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0];
+        let count = 0;
+        for (let j = 0; j < tasks.length; j++) if (tasks[j].completed && tasks[j].dueDate === d) count++;
+        completedByDay.push(count);
+    }
+    if (weeklyChart) weeklyChart.destroy();
+    weeklyChart = new Chart(document.getElementById('weeklyChart'), {
+        type: 'line',
+        data: { labels: days, datasets: [{ label: 'Completed', data: completedByDay, borderColor: '#3b82f6', fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: true }
+    });
+    
+    let assignees = { Me: 0, John: 0, Sarah: 0, Mike: 0 };
+    for (let i = 0; i < tasks.length; i++) {
+        if (assignees[tasks[i].assignee] !== undefined) assignees[tasks[i].assignee]++;
+    }
+    if (assigneeChart) assigneeChart.destroy();
+    assigneeChart = new Chart(document.getElementById('assigneeChart'), {
+        type: 'bar',
+        data: { labels: ['Me', 'John', 'Sarah', 'Mike'], datasets: [{ label: 'Tasks', data: [assignees.Me, assignees.John, assignees.Sarah, assignees.Mike], backgroundColor: '#3b82f6', borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }
+    });
+}
+
+function renderAll() {
+    renderTasks();
+    updateStats();
+    updateCharts();
+    checkReminders();
+}
+
+function showApp() {
+    document.getElementById('userDisplay').innerHTML = '<i class="fas fa-user-circle"></i> ' + (currentUser.name || currentUser.email.split('@')[0]);
+    document.getElementById('userRole').innerText = currentUser.role || 'Member';
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    loadTasks();
+}
+
+// ============ EVENT LISTENERS ============
+document.getElementById('loginBtn').onclick = handleLogin;
+document.getElementById('signupBtn').onclick = handleSignup;
+document.getElementById('showSignupBtn').onclick = function() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'block';
+};
+document.getElementById('showLoginBtn').onclick = function() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('signupForm').style.display = 'none';
+};
+document.getElementById('logoutBtn').onclick = handleLogout;
+document.getElementById('drawerLogout').onclick = handleLogout;
+document.getElementById('addTaskBtn').onclick = addTask;
+document.getElementById('themeToggle').onclick = toggleTheme;
+document.getElementById('taskTitle').addEventListener('keypress', function(e) { if (e.key === 'Enter') addTask(); });
+document.getElementById('searchInput').addEventListener('input', function(e) { searchQuery = e.target.value; renderTasks(); });
+document.getElementById('taskDueDate').value = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+// Assignee filters
+let assigneeChips = document.querySelectorAll('[data-assignee]');
+for (let i = 0; i < assigneeChips.length; i++) {
+    assigneeChips[i].onclick = function() {
+        let chips = document.querySelectorAll('[data-assignee]');
+        for (let j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+        this.classList.add('active');
+        currentAssignee = this.getAttribute('data-assignee');
+        renderTasks();
+    };
+}
+
+// Status filters
+let statusChips = document.querySelectorAll('[data-stat]');
+for (let i = 0; i < statusChips.length; i++) {
+    statusChips[i].onclick = function() {
+        let chips = document.querySelectorAll('[data-stat]');
+        for (let j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+        this.classList.add('active');
+        currentStat = this.getAttribute('data-stat');
+        renderTasks();
+    };
+}
+
+// Navigation
+let navItems = document.querySelectorAll('[data-view]');
+for (let i = 0; i < navItems.length; i++) {
+    navItems[i].onclick = function() {
+        let view = this.getAttribute('data-view');
+        document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
+        document.getElementById('analyticsView').style.display = view === 'analytics' ? 'block' : 'none';
+        if (view === 'analytics') updateCharts();
+        let items = document.querySelectorAll('[data-view]');
+        for (let j = 0; j < items.length; j++) items[j].classList.remove('active');
+        this.classList.add('active');
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('active');
+    };
+}
+
+// Drawer
+document.getElementById('menuBtn').onclick = function() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('active');
+};
+document.getElementById('drawerOverlay').onclick = function() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('active');
+};
+
+// Modals
+document.getElementById('cancelDeleteBtn').onclick = function() {
+    document.getElementById('confirmModal').classList.remove('active');
+};
+document.getElementById('confirmDeleteBtn').onclick = function() {
+    if (pendingDeleteId) deleteTask(pendingDeleteId);
+    document.getElementById('confirmModal').classList.remove('active');
+};
+document.getElementById('cancelEditBtn').onclick = function() {
+    document.getElementById('editModal').classList.remove('active');
+};
+document.getElementById('saveEditBtn').onclick = function() {
+    if (pendingEditId) updateTask(pendingEditId, document.getElementById('editInput').value);
+    document.getElementById('editModal').classList.remove('active');
+};
+
+// ============ START APP ============
+if (checkSession()) {
+    showApp();
+} else {
+    document.getElementById('authContainer').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+}
+</script>
+</body>
+</html>
